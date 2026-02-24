@@ -6,3 +6,5 @@ python-dotenv
 starlette
 requests
 openai
+uvicorn
+python-multipart
