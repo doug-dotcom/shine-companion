@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ShineAI</title>
+<style>
+body {
+    background: linear-gradient(to bottom right, #0a0f2a, #162c5c);
+    color: white;
+    font-family: Arial;
+    text-align: center;
+    margin-top: 100px;
+}
+input {
+    width: 400px;
+    padding: 10px;
+}
+button {
+    padding: 10px;
+}
+#response {
+    margin-top: 20px;
+}
+</style>
+</head>
+<body>
+
+<h1>ShineAI is present with you.</h1>
+
+<input id="msg" placeholder="Type here...">
+<button onclick="send()">Send</button>
+
+<div id="response"></div>
+
+<script>
+async function send(){
+    let text = document.getElementById("msg").value;
+
+    let res = await fetch("/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:text})
+    });
+
+    let data = await res.json();
+
+    document.getElementById("response").innerHTML =
+        "ShineAI: " + data.response;
+}
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const sendBtn = document.getElementById("sendBtn");
+
+    if (!sendBtn) return;
+
+    sendBtn.addEventListener("click", async function () {
+
+        const textarea = document.querySelector("textarea");
+        const select = document.querySelector("select");
+
+        if (!textarea) return alert("No textarea found");
+
+        const message = textarea.value;
+        const mode = select ? select.value : "Companion Mode";
+
+        try {
+            const response = await fetch("http://localhost:8060/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message, mode: mode })
+            });
+
+            const data = await response.json();
+
+            alert(data.response || data.error || "No response returned");
+
+        } catch (err) {
+            console.error(err);
+            alert("Connection error");
+        }
+
+    });
+});
+</script>
+
+</body>
+</html>
+

@@ -1,0 +1,25 @@
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi import Request
+import uvicorn
+import os
+from provider_manager import ProviderManager
+
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+provider = ProviderManager()
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.post("/chat")
+async def chat(data: dict):
+    message = data.get("message")
+    reply = provider.chat(message)
+    return {"response": reply}
+
+if __name__ == "__main__":
+    uvicorn.run("server:app", host="0.0.0.0", port=8060, reload=False)

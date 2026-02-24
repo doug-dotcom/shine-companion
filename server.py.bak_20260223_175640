@@ -1,0 +1,56 @@
+import json
+import os
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+import uvicorn
+
+app = FastAPI()
+
+MEMORY_FILE = "C:\\ShineAI\\memory.json"
+
+# ensure memory file exists
+if not os.path.exists(MEMORY_FILE):
+    with open(MEMORY_FILE,"w") as f:
+        json.dump({},f)
+
+def load_memory():
+    try:
+        with open(MEMORY_FILE,"r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_memory(mem):
+    with open(MEMORY_FILE,"w") as f:
+        json.dump(mem,f,indent=2)
+
+@app.post("/chat")
+async def chat(request: Request):
+    data = await request.json()
+    msg = data.get("message","").lower()
+
+    mem = load_memory()
+
+    # learn name
+    if "my name is" in msg:
+        name = msg.split("my name is")[-1].strip().title()
+        mem["name"] = name
+        save_memory(mem)
+        return {"response": f"I will remember that your name is {name}."}
+
+    # recall name
+    if "what is my name" in msg:
+        if "name" in mem:
+            return {"response": f"Your name is {mem['name']}."}
+        else:
+            return {"response": "You haven't told me your name yet."}
+
+    # fallback
+    return {"response": f"I received: {msg}"}
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return open("C:\\ShineAI\\index.html").read()
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8060)

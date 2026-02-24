@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel='icon' type='image/png' href='/static/favicon.png'>
+    <link rel='icon' href='/favicon.ico' type='image/x-icon'>
+    <link rel='icon' type='image/svg+xml' href='/static/favicon.svg'>
+    <meta charset="UTF-8">
+    <title>Shine Companion</title>
+</head>
+<body>
+
+<h2>✨ Shine Companion</h2>
+
+<select id="mode">
+    <option value="companion">Companion Mode</option>
+    <option value="safespace">SafeSpace Mode</option>
+</select>
+
+<br><br>
+
+<textarea id="message" rows="5" cols="50"></textarea>
+
+<br><br>
+
+<button id="sendBtn">Send</button>
+
+<pre id="response"></pre>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const btn = document.getElementById("sendBtn");
+
+    btn.addEventListener("click", async function() {
+
+        const message = document.getElementById("message").value;
+        const mode = document.getElementById("mode").value;
+
+        const resBox = document.getElementById("response");
+        resBox.textContent = "Thinking...";
+
+        try {
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message, mode: mode })
+            });
+
+            const data = await response.json();
+
+            resBox.textContent = data.response || data.error || "No response";
+
+        } catch (err) {
+            resBox.textContent = "Error: " + err;
+            console.error(err);
+        }
+
+    });
+
+});
+</script>
+
+</body>
+</html>
+
+
+

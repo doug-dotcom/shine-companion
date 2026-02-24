@@ -1,0 +1,25 @@
+{
+    "primary_user": "Doug",
+    "profiles": {
+        "Doug": {
+            "role": "Creator",
+            "priority": "Highest",
+            "memory_access": "Full"
+        },
+        "Lyndal": {
+            "role": "Trusted",
+            "priority": "High",
+            "memory_access": "Shared"
+        },
+        "Ashton": {
+            "role": "Family",
+            "priority": "Normal",
+            "memory_access": "Scoped"
+        },
+        "Iyla": {
+            "role": "Family",
+            "priority": "Normal",
+            "memory_access": "Scoped"
+        }
+    }
+}

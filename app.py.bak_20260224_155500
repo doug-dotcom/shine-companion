@@ -1,0 +1,17 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+from dateutil import parser
+import datetime, os
+
+app = FastAPI()
+
+class Cmd(BaseModel):
+    command: str
+
+@app.post("/bridge")
+def bridge(cmd: Cmd):
+    ts = datetime.datetime.now().isoformat()
+    with open(r"C:\ShineAI\bridge.log","a") as f:
+        f.write(f"[{ts}] {cmd.command}\n")
+    return {"status":"ok","received":cmd.command}
+

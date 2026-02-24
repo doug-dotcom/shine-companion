@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shine Companion</title>
+</head>
+<body>
+
+<h2>✨ Shine Companion</h2>
+
+<select id="modeSelect">
+    <option>Companion Mode</option>
+    <option>SafeSpace Mode</option>
+</select>
+
+<br><br>
+
+<textarea id="messageBox" rows="4" cols="50"></textarea>
+
+<br><br>
+
+<button id="sendBtn">Send</button>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const sendBtn = document.getElementById("sendBtn");
+
+    sendBtn.addEventListener("click", async function () {
+
+        const message = document.getElementById("messageBox").value;
+        const mode = document.getElementById("modeSelect").value;
+
+        try {
+            const response = await fetch("http://localhost:8060/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message, mode: mode })
+            });
+
+            const data = await response.json();
+
+            alert(data.response || data.error || "No response");
+
+        } catch (err) {
+            console.error(err);
+            alert("Connection error");
+        }
+
+    });
+
+});
+</script>
+
+</body>
+</html>
