@@ -1,34 +1,31 @@
 import os
-import traceback
-from dotenv import load_dotenv
 from openai import OpenAI
-
-load_dotenv()
 
 
 class CoreEngine:
     def __init__(self):
+        # Explicitly load API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY not found.")
+            raise ValueError("OPENAI_API_KEY not found in environment.")
 
-        # Let the SDK read the key from environment
-        self.client = OpenAI()
+        # Explicit client injection (critical for Railway)
+        self.client = OpenAI(api_key=api_key)
 
-        # Configurable model (change if needed)
+        # Model (defaults safely to mini)
         self.model = os.getenv("SHINE_MODEL", "gpt-4o-mini")
 
     def generate_from_messages(self, messages):
         try:
-            resp = self.client.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
+                temperature=0.7,
             )
 
-            return resp.choices[0].message.content
+            return response.choices[0].message.content
 
         except Exception as e:
-            print("===== OPENAI ERROR =====")
-            traceback.print_exc()
-            print("========================")
+            print("==== OPENAI ERROR ====")
+            print(str(e))
             raise
