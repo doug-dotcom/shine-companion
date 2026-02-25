@@ -15,9 +15,14 @@ class CoreEngine:
         self.model = os.getenv("SHINE_MODEL", "gpt-4o-mini")
 
     def generate_from_messages(self, messages):
-        # messages: List[{"role": "...", "content": "..."}]
+    try:
         resp = self.client.chat.completions.create(
             model=self.model,
             messages=messages
         )
         return resp.choices[0].message.content
+    except Exception as e:
+        print("====== OPENAI ERROR ======")
+        print(str(e))
+        print("==========================")
+        raise
