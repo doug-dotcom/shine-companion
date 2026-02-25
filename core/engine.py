@@ -14,7 +14,7 @@ class CoreEngine:
         # Keep model configurable
         self.model = os.getenv("SHINE_MODEL", "gpt-4o-mini")
 
-   def generate_from_messages(self, messages):
+    def generate_from_messages(self, messages):
         try:
             resp = self.client.chat.completions.create(
                 model=self.model,
