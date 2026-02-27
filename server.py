@@ -134,7 +134,7 @@ if __name__ == "__main__":
 from fastapi import Request
 import requests
 
-@app.post("/chat")
+@app.post("/chat", dependencies=[Depends(get_current_user)])
 async def chat(request: Request):
     body = await request.json()
     user_message = body.get("message", "")
@@ -171,5 +171,6 @@ async def chat(request: Request):
     return {"reply": reply}
 
 # =====================================================
+
 
 
