@@ -50,6 +50,10 @@ logger.info("Starting %s %s", APP_NAME, APP_VERSION)
 
 app = FastAPI()
 
+from identity.routes import router as auth_router
+app.include_router(auth_router)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -167,4 +171,5 @@ async def chat(request: Request):
     return {"reply": reply}
 
 # =====================================================
+
 
