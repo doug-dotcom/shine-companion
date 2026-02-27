@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Shine Companion</title>
+
+<style>
+body{
+font-family:Arial;
+background:#111;
+color:white;
+display:flex;
+flex-direction:column;
+align-items:center;
+padding:40px;
+}
+
+#chat{
+width:600px;
+max-width:90%;
+}
+
+#messages{
+height:400px;
+overflow-y:auto;
+border:1px solid #444;
+padding:10px;
+margin-bottom:10px;
+}
+
+input{
+width:80%;
+padding:10px;
+}
+
+button{
+padding:10px;
+background:#00d4ff;
+border:none;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Shine Companion</h1>
+
+<div id="chat">
+
+<div id="messages"></div>
+
+<input id="msg" placeholder="Talk to Shine Companion..." />
+<button onclick="send()">Send</button>
+
+</div>
+
+<script>
+
+async function send(){
+
+let input = document.getElementById("msg")
+let text = input.value
+
+let messages = document.getElementById("messages")
+
+messages.innerHTML += "<div><b>You:</b> "+text+"</div>"
+
+input.value=""
+
+let response = await fetch("/chat",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+message:text
+})
+})
+
+let data = await response.json()
+
+messages.innerHTML += "<div><b>Shine:</b> "+data.reply+"</div>"
+
+messages.scrollTop = messages.scrollHeight
+}
+
+</script>
+
+</body>
+</html>

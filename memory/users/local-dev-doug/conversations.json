@@ -1,0 +1,15 @@
+{
+  "updated_utc": "2026-02-24T05:27:55.7197873Z",
+  "created_utc": "2026-02-24T05:27:55.7180370Z",
+  "conversations": [
+    {
+      "updated_utc": "2026-02-24T05:27:55.7198212Z",
+      "title": "Default",
+      "messages": [],
+      "created_utc": "2026-02-24T05:27:55.7198090Z",
+      "id": "default"
+    }
+  ],
+  "user_id": "local-dev-doug",
+  "schema_version": 1
+}

@@ -123,3 +123,48 @@ def openai_test():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
+# =====================================================
+# CHAT ENDPOINT
+# =====================================================
+
+from fastapi import Request
+import requests
+
+@app.post("/chat")
+async def chat(request: Request):
+    body = await request.json()
+    user_message = body.get("message", "")
+
+    key = os.getenv("OPENAI_API_KEY")
+    if not key:
+        return {"error": "OPENAI_API_KEY not set"}
+
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "You are Shine Companion."},
+            {"role": "user", "content": user_message}
+        ]
+    }
+
+    response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers=headers,
+        json=payload
+    )
+
+    if response.status_code != 200:
+        return {"error": response.text}
+
+    data = response.json()
+    reply = data["choices"][0]["message"]["content"]
+
+    return {"reply": reply}
+
+# =====================================================
+

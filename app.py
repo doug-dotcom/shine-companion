@@ -35,3 +35,19 @@ async def login_post(request: Request, username: str = Form(...), password: str 
 
     return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
 
+
+# --- Compatibility route for frontend ---
+@app.post("/chat")
+async def chat_compat(payload: dict):
+    try:
+        if "ask" in globals():
+            return await ask(payload)
+        elif "chat" in globals():
+            return await chat(payload)
+        elif "handle_chat" in globals():
+            return await handle_chat(payload)
+        else:
+            return {"error": "No compatible handler found"}
+    except Exception as e:
+        return {"error": str(e)}
+

@@ -2,9 +2,6 @@ __pycache__/
 *.pyc
 .env
 venv/
-logs/
-memory/
-MemoryLogs/
-SearchCache/
-RecallIndex/
-users.json
+.venv/
+node_modules/
+*.log
