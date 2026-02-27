@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Shine Companion</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 900px; }
+    input, button, textarea { padding: 8px; font-size: 14px; }
+    textarea { width: 100%; height: 120px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .box { border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin: 12px 0; }
+    .muted { opacity: 0.7; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>Shine Companion</h2>
+
+  <div class="box">
+    <div class="row">
+      <strong>Auth</strong>
+      <span class="muted" id="authState">Not logged in</span>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <input id="username" placeholder="username" />
+      <input id="password" placeholder="password" type="password" />
+      <button onclick="register()">Register</button>
+      <button onclick="login()">Login</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <input id="token" placeholder="Bearer token (auto)" style="width: 100%;" />
+    </div>
+  </div>
+
+  <div class="box">
+    <strong>Chat</strong>
+    <div style="margin-top:10px;">
+      <textarea id="message" placeholder="Type message..."></textarea>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button onclick="send()">Send</button>
+    </div>
+    <h4>Reply</h4>
+    <pre id="out"></pre>
+  </div>
+
+<script>
+  const tokenInput = document.getElementById("token");
+  const authState = document.getElementById("authState");
+  const saved = localStorage.getItem("shine_token");
+  if (saved) { tokenInput.value = saved; authState.textContent = "Logged in"; }
+
+  function setToken(t){
+    tokenInput.value = t || "";
+    if (t) {
+      localStorage.setItem("shine_token", t);
+      authState.textContent = "Logged in";
+    } else {
+      localStorage.removeItem("shine_token");
+      authState.textContent = "Not logged in";
+    }
+  }
+
+  async function register(){
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const r = await fetch("/register", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({username, password})
+    });
+    const j = await r.json().catch(()=> ({}));
+    document.getElementById("out").textContent = JSON.stringify(j, null, 2);
+  }
+
+  async function login(){
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const form = new URLSearchParams();
+    form.append("username", username);
+    form.append("password", password);
+
+    const r = await fetch("/token", {
+      method:"POST",
+      headers: {"Content-Type":"application/x-www-form-urlencoded"},
+      body: form.toString()
+    });
+    const j = await r.json().catch(()=> ({}));
+    if (j.access_token) setToken(j.access_token);
+    document.getElementById("out").textContent = JSON.stringify(j, null, 2);
+  }
+
+  function logout(){ setToken(""); }
+
+  async function send(){
+    const msg = document.getElementById("message").value;
+    const t = tokenInput.value.trim();
+    const headers = {"Content-Type":"application/json"};
+    if (t) headers["Authorization"] = "Bearer " + t;
+
+    const r = await fetch("/chat", {
+      method:"POST",
+      headers,
+      body: JSON.stringify({message: msg})
+    });
+    const j = await r.json().catch(()=> ({}));
+    document.getElementById("out").textContent = JSON.stringify(j, null, 2);
+  }
+</script>
+</body>
+</html>

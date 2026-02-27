@@ -5,7 +5,10 @@ import uuid
 import logging
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from identity.auth import create_user, authenticate_user, create_access_token, get_current_user
+, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -124,6 +127,38 @@ def openai_test():
 # RUNNER
 # =====================================================
 
+
+# =========================
+# AUTH (JWT)
+# =========================
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/register")
+def register(req: RegisterRequest):
+    create_user(req.username, req.password)
+    return {"status": "ok", "message": "User registered"}
+
+@app.post("/token")
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = create_access_token({"sub": user["username"]})
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.get("/me")
+def me(current_user=Depends(get_current_user)):
+    return {"user": current_user}
+
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
@@ -132,6 +167,8 @@ if __name__ == "__main__":
 # =====================================================
 
 from fastapi import Request
+from fastapi.security import OAuth2PasswordRequestForm
+from identity.auth import create_user, authenticate_user, create_access_token, get_current_user
 import requests
 
 @app.post("/chat", dependencies=[Depends(get_current_user)])
@@ -171,6 +208,7 @@ async def chat(request: Request):
     return {"reply": reply}
 
 # =====================================================
+
 
 
 
