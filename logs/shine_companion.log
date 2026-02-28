@@ -1,0 +1,43 @@
+2026-02-24 17:18:41,056 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 18:44:35,953 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 18:44:36,217 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 18:46:41,301 | INFO | Login success user=Doug ip=127.0.0.1
+2026-02-24 18:54:42,455 | INFO | REQ 35131550 user=Doug ip=127.0.0.1 mode=Doug:companion len=32
+2026-02-24 18:54:46,072 | INFO | REQ e8aee88f user=Doug ip=127.0.0.1 mode=Doug:companion len=32
+2026-02-24 18:55:43,955 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 18:55:44,226 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 18:58:28,570 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 18:58:28,845 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 19:02:20,054 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 19:02:20,312 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 19:09:12,454 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 19:09:12,704 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 19:13:37,595 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 19:13:37,859 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 20:45:50,639 | INFO | Login success user=Doug ip=127.0.0.1
+2026-02-24 20:54:01,400 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 20:54:01,668 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 20:55:28,542 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 20:55:28,813 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 20:59:39,209 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 20:59:39,484 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:00:10,296 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:00:10,561 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:05:15,638 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:05:15,912 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:08:36,927 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:08:37,197 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 21:48:35,688 | INFO | Login success user=Doug ip=127.0.0.1
+2026-02-24 21:48:41,200 | INFO | REQ 8ef487ac user=Doug ip=127.0.0.1 mode=Doug:companion len=4
+2026-02-24 21:48:43,822 | INFO | REQ b1e92453 user=Doug ip=127.0.0.1 mode=Doug:companion len=4
+2026-02-24 21:49:29,466 | INFO | REQ 8f9faf50 user=Doug ip=127.0.0.1 mode=Doug:companion len=32
+2026-02-24 22:07:14,694 | INFO | REQ 3266a4cd user=Doug ip=127.0.0.1 mode=Doug:companion len=30
+2026-02-24 22:10:20,620 | INFO | REQ 2de6d036 user=Doug ip=127.0.0.1 mode=Doug:companion len=28
+2026-02-24 22:16:41,447 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 22:16:41,703 | INFO | Starting Shine Companion 1.4-login-full-users
+2026-02-24 22:16:56,550 | INFO | REQ 1e4b94cd user=Doug ip=127.0.0.1 mode=Doug:companion len=3
+2026-02-24 22:17:34,387 | INFO | Login success user=Doug ip=127.0.0.1
+2026-02-24 22:17:57,251 | INFO | REQ 24bb6d32 user=Doug ip=127.0.0.1 mode=Doug:companion len=32
+2026-02-25 17:11:23,528 | INFO | REQ 39c62344 user=Doug ip=127.0.0.1 mode=Doug:companion len=17
+2026-02-25 17:11:39,672 | INFO | REQ 4423659f user=Doug ip=127.0.0.1 mode=Doug:companion len=25
+2026-02-25 17:11:49,828 | INFO | REQ dbb8739c user=Doug ip=127.0.0.1 mode=Doug:companion len=15

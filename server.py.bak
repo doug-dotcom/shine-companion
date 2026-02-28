@@ -1,0 +1,438 @@
+# server.py — Shine Companion (simple + stable JWT)
+#
+# Features:
+# - POST /register  (create user)
+# - POST /token     (OAuth2 password flow -> JWT)
+# - GET  /me        (who am I)
+# - POST /chat      (protected; requires Bearer token)
+# - GET  /chat-ui   (simple HTML UI)
+# - GET  /          (health/root)
+#
+# Requirements (pip):
+#   fastapi uvicorn python-multipart passlib[bcrypt] python-jose[cryptography] requests
+#
+# Env vars (Railway/Windows):
+#   SECRET_KEY   = long random string (required)
+#   PORT         = provided by Railway (optional locally)
+#   APP_NAME     = optional
+#
+# Run local:
+#   python -m uvicorn server:app --host 0.0.0.0 --port 8060 --reload
+
+import os
+import time
+import json
+import sqlite3
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
+
+import requests
+from fastapi import FastAPI, HTTPException, Depends, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from pydantic import BaseModel
+
+# =========================
+# CONFIG
+# =========================
+APP_NAME = os.getenv("APP_NAME", "Shine Companion")
+APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
+PORT = int(os.getenv("PORT", "8060"))
+
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    # Don't crash hard on import (Railway logs are nicer),
+    # but all auth routes will fail clearly until SECRET_KEY is set.
+    print("WARNING: SECRET_KEY env var is not set. Set it in Railway Variables or local env.")
+
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "data", "users.db"))
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+# =========================
+# DB HELPERS
+# =========================
+def db_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def db_init():
+    conn = db_conn()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              username TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user(username: str) -> Optional[Dict[str, Any]]:
+    conn = db_conn()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def create_user(username: str, password: str) -> None:
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username and password are required")
+
+    if get_user(username):
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    password_hash = pwd_context.hash(password)
+    conn = db_conn()
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+            (username, password_hash, datetime.utcnow().isoformat()),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="User already exists")
+    finally:
+        conn.close()
+
+
+def verify_password(plain_password: str, password_hash: str) -> bool:
+    return pwd_context.verify(plain_password, password_hash)
+
+
+def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+    user = get_user(username)
+    if not user:
+        return None
+    if not verify_password(password, user["password_hash"]):
+        return None
+    return user
+
+
+# =========================
+# JWT HELPERS
+# =========================
+def create_access_token(data: dict, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
+    if not SECRET_KEY:
+        raise HTTPException(status_code=500, detail="SECRET_KEY not configured")
+
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    if not SECRET_KEY:
+        raise HTTPException(status_code=500, detail="SECRET_KEY not configured")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    payload = decode_token(token)
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token (missing sub)")
+    user = get_user(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    # return safe user object
+    return {"id": user["id"], "username": user["username"]}
+
+
+# =========================
+# FASTAPI APP
+# =========================
+app = FastAPI(title=APP_NAME, version=APP_VERSION)
+db_init()
+
+
+# =========================
+# MODELS
+# =========================
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    model: Optional[str] = "gpt-4o-mini"
+    max_tokens: Optional[int] = 300
+
+
+# =========================
+# ROOT / HEALTH
+# =========================
+@app.get("/")
+def root():
+    return {
+        "ok": True,
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "time_utc": datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
+# =========================
+# AUTH (JWT)
+# =========================
+@app.post("/register")
+def register(req: RegisterRequest):
+    create_user(req.username.strip(), req.password)
+    return {"status": "ok", "message": "User registered"}
+
+
+@app.post("/token")
+def token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username.strip(), form_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token = create_access_token({"sub": user["username"]})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/me", dependencies=[Depends(get_current_user)])
+def me(current_user: Dict[str, Any] = Depends(get_current_user)):
+    return {"status": "ok", "user": current_user}
+
+
+# =========================
+# CHAT (Protected)
+# =========================
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+def call_openai_chat(message: str, model: str = "gpt-4o-mini", max_tokens: int = 300) -> str:
+    """
+    Minimal OpenAI call. If you don't want OpenAI involved yet,
+    leave OPENAI_API_KEY blank and you'll get an echo response.
+    """
+    if not OPENAI_API_KEY:
+        return f"(no OPENAI_API_KEY set) You said: {message}"
+
+    # NOTE: This uses the standard OpenAI Responses API shape.
+    # If you have a different endpoint already, swap this function only.
+    url = "https://api.openai.com/v1/responses"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "input": message,
+        "max_output_tokens": max_tokens,
+    }
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    if r.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"OpenAI error: {r.status_code} {r.text}")
+
+    data = r.json()
+    # Try to extract text safely
+    # responses format can vary; handle common cases
+    if "output_text" in data and isinstance(data["output_text"], str):
+        return data["output_text"]
+
+    # Fallback: attempt to walk output
+    try:
+        out = data.get("output", [])
+        texts = []
+        for item in out:
+            for c in item.get("content", []):
+                if c.get("type") == "output_text" and "text" in c:
+                    texts.append(c["text"])
+        if texts:
+            return "\n".join(texts).strip()
+    except Exception:
+        pass
+
+    return json.dumps(data)[:1000]
+
+
+@app.post("/chat", dependencies=[Depends(get_current_user)])
+def chat(req: ChatRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    reply = call_openai_chat(req.message, model=req.model or "gpt-4o-mini", max_tokens=req.max_tokens or 300)
+    return {
+        "status": "ok",
+        "user": current_user,
+        "reply": reply,
+    }
+
+
+# =========================
+# SIMPLE CHAT UI
+# =========================
+CHAT_UI_HTML = """
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Shine Companion - Chat UI</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    input, button, textarea { font-size: 14px; }
+    .row { margin-bottom: 12px; }
+    textarea { width: 100%; height: 120px; }
+    pre { background:#111; color:#eee; padding:12px; border-radius:8px; overflow:auto; }
+    .small { color:#666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h2>Shine Companion - Chat UI</h2>
+  <div class="small">
+    Flow: Register → Token → Authorize → Chat
+  </div>
+
+  <div class="row">
+    <h3>1) Register</h3>
+    <input id="ru" placeholder="username"/>
+    <input id="rp" placeholder="password" type="password"/>
+    <button onclick="doRegister()">Register</button>
+    <div id="rout" class="small"></div>
+  </div>
+
+  <div class="row">
+    <h3>2) Get Token</h3>
+    <input id="lu" placeholder="username"/>
+    <input id="lp" placeholder="password" type="password"/>
+    <button onclick="doLogin()">Get Token</button>
+    <div class="small">Token:</div>
+    <textarea id="token" placeholder="JWT token will appear here"></textarea>
+  </div>
+
+  <div class="row">
+    <h3>3) Chat (requires token)</h3>
+    <textarea id="msg" placeholder="Say something..."></textarea>
+    <button onclick="doChat()">Send</button>
+  </div>
+
+  <h3>Output</h3>
+  <pre id="out"></pre>
+
+<script>
+function setOut(x){ document.getElementById('out').textContent = x; }
+
+async function doRegister(){
+  const username = document.getElementById('ru').value;
+  const password = document.getElementById('rp').value;
+  const r = await fetch('/register', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username, password})
+  });
+  const t = await r.text();
+  document.getElementById('rout').textContent = t;
+  setOut(t);
+}
+
+async function doLogin(){
+  const username = document.getElementById('lu').value;
+  const password = document.getElementById('lp').value;
+
+  const form = new URLSearchParams();
+  form.append('username', username);
+  form.append('password', password);
+
+  const r = await fetch('/token', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: form.toString()
+  });
+  const j = await r.json().catch(()=>({error:'bad json'}));
+  if(j.access_token){
+    document.getElementById('token').value = j.access_token;
+  }
+  setOut(JSON.stringify(j, null, 2));
+}
+
+async function doChat(){
+  const token = document.getElementById('token').value.trim();
+  const message = document.getElementById('msg').value;
+
+  const r = await fetch('/chat', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({message})
+  });
+
+  const j = await r.json().catch(()=>({error:'bad json'}));
+  setOut(JSON.stringify(j, null, 2));
+}
+</script>
+</body>
+</html>
+"""
+
+
+@app.get("/chat-ui", response_class=HTMLResponse)
+def chat_ui():
+    return HTMLResponse(CHAT_UI_HTML)
+
+
+# =========================
+# RUNNER (optional)
+# =========================
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=False)
+from fastapi.openapi.utils import get_openapi
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="Shine Companion",
+        version="1.0",
+        description="Secure AI Companion",
+        routes=app.routes,
+    )
+
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    }
+
+    openapi_schema["security"] = [{"BearerAuth": []}]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+
+
