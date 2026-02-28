@@ -1,29 +1,99 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
 from jose import jwt
 import sqlite3
 import os
+from openai import OpenAI
 
 app = FastAPI()
 
-SECRET = os.getenv("JWT_SECRET","shine_secret")
+# =========================
+# CONFIG
+# =========================
+
+SECRET = os.getenv("JWT_SECRET", "shine_secret")
+ALGORITHM = "HS256"
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 security = HTTPBearer()
 
-def verify_token(credentials=Depends(security)):
+# =========================
+# DATABASE INIT
+# =========================
+
+def init_db():
+    conn = sqlite3.connect("memory.db")
+    c = conn.cursor()
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS user_memory(
+        user_id TEXT,
+        key TEXT,
+        value TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# =========================
+# TOKEN VERIFY
+# =========================
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+
     try:
         token = credentials.credentials
-        payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
         return payload
     except:
         raise HTTPException(status_code=403, detail="Invalid token")
 
+# =========================
+# LOGIN ENDPOINT
+# =========================
+
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+
+    username = form_data.username
+    password = form_data.password
+
+    # simple demo auth
+    if username != "doug" or password != "shine":
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    payload = {
+        "id": username,
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+
+    token = jwt.encode(payload, SECRET, algorithm=ALGORITHM)
+
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
+
+# =========================
+# ROOT
+# =========================
+
 @app.get("/")
 def root():
-    return {"status":"Shine Companion Online"}
+    return {"status": "Shine Companion Online"}
+
+# =========================
+# SAVE MEMORY
+# =========================
 
 @app.post("/memory/save")
-def save_memory(data:dict, user=Depends(verify_token)):
+def save_memory(data: dict, user=Depends(verify_token)):
+
     conn = sqlite3.connect("memory.db")
     c = conn.cursor()
 
@@ -35,7 +105,11 @@ def save_memory(data:dict, user=Depends(verify_token)):
     conn.commit()
     conn.close()
 
-    return {"status":"saved"}
+    return {"status": "saved"}
+
+# =========================
+# GET MEMORY
+# =========================
 
 @app.get("/memory/get")
 def get_memory(user=Depends(verify_token)):
@@ -52,51 +126,45 @@ def get_memory(user=Depends(verify_token)):
 
     conn.close()
 
-    return {"memory":data}
-# ==============================
-# SHINE COMPANION CHAT ENDPOINT
-# ==============================
+    return {"memory": data}
 
-from fastapi import Request
-from openai import OpenAI
-import sqlite3
-import os
-
-client = OpenAI()
+# =========================
+# CHAT
+# =========================
 
 @app.post("/chat")
 async def chat(request: Request, user=Depends(verify_token)):
 
-    data = await request.json()
-    message = data.get("message")
+    body = await request.json()
+    message = body.get("message")
 
     conn = sqlite3.connect("memory.db")
-    cursor = conn.cursor()
+    c = conn.cursor()
 
-    cursor.execute(
+    c.execute(
         "SELECT key,value FROM user_memory WHERE user_id=?",
         (user["id"],)
     )
 
-    memories = cursor.fetchall()
+    memories = c.fetchall()
 
     memory_context = ""
     for m in memories:
         memory_context += f"{m[0]}: {m[1]}\n"
 
     prompt = f"""
-User memory:
+MEMORY:
 {memory_context}
 
-User message:
+USER MESSAGE:
 {message}
 """
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=os.getenv("SHINE_MODEL","gpt-4o-mini"),
         messages=[
-            {"role": "system", "content": "You are Shine Companion."},
-            {"role": "user", "content": prompt}
+            {"role":"system","content":"You are Shine Companion."},
+            {"role":"user","content":prompt}
         ]
     )
 
@@ -105,4 +173,3 @@ User message:
     conn.close()
 
     return {"reply": reply}
-
